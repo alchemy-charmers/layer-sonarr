@@ -1,0 +1,26 @@
+name: sonarr
+summary: Installs sonarr
+maintainer: Chris Sanders <sanders.chris@gmail.com>
+description: |
+  Installs sonarr with relations for registering downloaders and notifications
+tags:
+  # Replace "misc" with one or more whitelisted tags from this list:
+  # https://jujucharms.com/docs/stable/authors-charm-metadata
+  - misc
+subordinate: false
+series:
+ - xenial
+resources:
+  sonarrconfig:
+    type: file
+    filename: sonarrconfig.tgz
+    description: "Tar file of configuration folder to restore on install"
+#provides:
+#  provides-relation:
+#    interface: interface-name
+#requires:
+#  requires-relation:
+#    interface: interface-name
+#peers:
+#  peer-relation:
+#    interface: interface-name

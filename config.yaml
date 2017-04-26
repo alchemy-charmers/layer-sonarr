@@ -1,0 +1,13 @@
+options:
+  sonarruser:
+    type: string
+    default: "sonarruser"
+    description: "The user to install sonarr under"
+  port:
+    type: int
+    default: 8989
+    description: "Port for binding sonarr daemon"
+  restore-config:
+    type: boolean
+    default: False
+    description: "Restore a previous configuration from resource"
