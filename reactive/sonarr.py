@@ -1,7 +1,7 @@
 from charms.reactive import when, when_all, when_not, set_state
 from charmhelpers.core import hookenv
 from charmhelpers.fetch import apt_install, add_source, apt_update
-from charmhelpers.core.host import adduser, service_start, service_restart, chownr
+from charmhelpers.core.host import adduser, service_start, service_stop, service_restart, chownr
 from charmhelpers.core.hookenv import status_set, log, resource_get
 import os
 import random
@@ -9,6 +9,7 @@ import string
 import fileinput
 import socket
 import tarfile
+import shutil
 
 @when_not('sonarr.installed')
 def install_sonarr():
@@ -47,15 +48,19 @@ gX27DCbagJxljizL7n8mzeGG4qopDEU0jQ0sAXVh
 
 ''')
     apt_update()
-    adduser(config['sonarruser'],password=''''''.join([random.choice(string.printable) for _ in range(random.randint(8, 12))]),home_dir='/home/'+config['sonarruser'])
+    adduser(config['sonarruser'],password=r''''''.join([random.choice(string.printable) for _ in range(random.randint(8, 12))]),home_dir='/home/'+config['sonarruser'])
     apt_install('nzbdrone')
-    status_set('active','')
+    os.chmod('/opt/',0o777)
+    shutil.chown('/opt/NzbDrone',user=config['sonarruser'],group=config['sonarruser'])
+    chownr('/opt/NzbDrone',owner=config['sonarruser'],group=config['sonarruser'])
+    status_set('maintenance','installed')
     set_state('sonarr.installed')
     hookenv.open_port(config['port'],'TCP')
 
 @when('sonarr.installed')
 @when_not('sonarr.autostart')
 def auto_start():
+    status_set('maintenance','setting up auto-start')
     with open('/lib/systemd/system/sonarr.service','w') as serviceFile:
         config = hookenv.config()
         serviceFile.write('''
@@ -80,33 +85,41 @@ WantedBy=multi-user.target
            mono='/usr/bin/mono',\
            sonarr='/opt/NzbDrone/NzbDrone.exe'))
     service_start('sonarr.service')
+    status_set('active','running default config')
     set_state('sonarr.autostart')
 
-#@when_all('sonarr.installed','layer-hostname.installed')
-#@when_not('sonarr.restored')
-#def restore_user_conf():
-#    config = hookenv.config()
-#    backups = './backups'
-#    if config['restore-config']:
-#        try:
-#            os.mkdir(backups)
-#        except OSError as e:
-#            if e.errno is 17:
-#              pass
-#        backupFile = resource_get('sabconfig')
-#        if backupFile:
-#            with tarfile.open(backupFile,'r:gz') as inFile:
-#                inFile.extractall('/home/{}'.format(config['sabuser']))
-#            for line in fileinput.input('/home/{}/.sonarr/sonarr.ini'.format(config['sabuser']), inplace=True):
-#                if line.startswith("host="):
-#                    line = "host={}\n".format(socket.gethostname())
-#                print(line,end='') # end statement to avoid inserting new lines at the end of the line
-#            log("Changing configuration for new host but not ports. The backup configuration will override charm port settings!",'WARNING')
-#            chownr('/home/{}/.sonarr'.format(config['sabuser']),owner=config['sabuser'],group=config['sabuser'])
-#        else:
-#            log("Add sabconfig resource, see juju attach or disable restore-config",'ERROR')
-#            raise ValueError('Sabconfig resource missing, see juju attach or disable restore-config')
-#    set_state('sonarr.restored')
+@when_all('sonarr.installed','layer-hostname.installed')
+@when_not('sonarr.restored')
+def restore_user_config():
+    status_set('maintenance','restoring configuration')
+    config = hookenv.config()
+    service_stop('sonarr.service')
+    backups = './backups'
+    if config['restore-config']:
+        try:
+            os.mkdir(backups)
+        except OSError as e:
+            if e.errno is 17:
+              pass
+        backupFile = resource_get('sonarrconfig')
+        if backupFile:
+            with tarfile.open(backupFile,'r:gz') as inFile:
+                inFile.extractall('/home/{}/.config/'.format(config['sonarruser']))
+            # Skipping this for now, Sonarr appears to default to '*' for bind address unlike sab
+            #for line in fileinput.input('/home/{}/.config/NzbDrone/config.xml'.format(config['sonarruser']), inplace=True):
+            #    if line.startswith("host="):
+            #        line = "host={}\n".format(socket.gethostname())
+            #    print(line,end='') # end statement to avoid inserting new lines at the end of the line
+            #log("Changing configuration for new host but not ports. The backup configuration will override charm port settings!",'WARNING')
+
+            chownr('/home/{}/.config/NzbDrone'.format(config['sonarruser']),owner=config['sonarruser'],group=config['sonarruser'])
+            log("Restoring config, the restored configuration will override charm port settings",'INFO')
+        else:
+            log("Add sonarrconfig resource, see juju attach or disable restore-config",'ERROR')
+            raise ValueError('Sonarrconfig resource missing, see juju attach or disable restore-config')
+    service_start('sonarr.service')
+    status_set('active','running restored configuration')
+    set_state('sonarr.restored')
         
 
 #@when_all('sonarr.restored')
