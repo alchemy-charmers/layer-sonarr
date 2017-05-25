@@ -105,18 +105,12 @@ def restore_user_config():
         if backupFile:
             with tarfile.open(backupFile,'r:gz') as inFile:
                 inFile.extractall('/home/{}/.config/'.format(config['sonarruser']))
-            # Skipping this for now, Sonarr appears to default to '*' for bind address unlike sab
-            #for line in fileinput.input('/home/{}/.config/NzbDrone/config.xml'.format(config['sonarruser']), inplace=True):
-            #    if line.startswith("host="):
-            #        line = "host={}\n".format(socket.gethostname())
-            #    print(line,end='') # end statement to avoid inserting new lines at the end of the line
-            #log("Changing configuration for new host but not ports. The backup configuration will override charm port settings!",'WARNING')
-
             chownr('/home/{}/.config/NzbDrone'.format(config['sonarruser']),owner=config['sonarruser'],group=config['sonarruser'])
             log("Restoring config, the restored configuration will override charm port settings",'INFO')
         else:
-            log("Add sonarrconfig resource, see juju attach or disable restore-config",'ERROR')
-            raise ValueError('Sonarrconfig resource missing, see juju attach or disable restore-config')
+            log("Add sonarrconfig resource, see juju attach or disable restore-config",'WARN')
+            status_set('blocked','waiting for sonarrconfig resource')
+            return
     service_start('sonarr.service')
     status_set('active','running restored configuration')
     set_state('sonarr.restored')
