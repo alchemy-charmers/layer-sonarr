@@ -6,7 +6,11 @@ options:
   port:
     type: int
     default: 8989
-    description: "Port for binding sonarr daemon"
+    description: "Port for sonarr"
+  ssl-port:
+    type: int
+    default: 9898
+    description: "SSL port for sonarr"
   restore-config:
     type: boolean
     default: False

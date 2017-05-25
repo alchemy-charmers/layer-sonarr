@@ -55,7 +55,6 @@ gX27DCbagJxljizL7n8mzeGG4qopDEU0jQ0sAXVh
     chownr('/opt/NzbDrone',owner=config['sonarruser'],group=config['sonarruser'])
     status_set('maintenance','installed')
     set_state('sonarr.installed')
-    hookenv.open_port(config['port'],'TCP')
 
 @when('sonarr.installed')
 @when_not('sonarr.autostart')
@@ -89,9 +88,9 @@ WantedBy=multi-user.target
     set_state('sonarr.autostart')
 
 @when_all('sonarr.installed','layer-hostname.installed')
-@when_not('sonarr.restored')
-def restore_user_config():
-    status_set('maintenance','restoring configuration')
+@when_not('sonarr.configured')
+def setup_config():
+    status_set('maintenance','configuring sonarr')
     config = hookenv.config()
     service_stop('sonarr.service')
     backups = './backups'
@@ -111,29 +110,16 @@ def restore_user_config():
             log("Add sonarrconfig resource, see juju attach or disable restore-config",'WARN')
             status_set('blocked','waiting for sonarrconfig resource')
             return
+    for line in fileinput.input('/home/{}/.config/NzbDrone/config.xml'.format(config['sonarruser'])):
+        if line.strip().startswith('<Port>'):
+            line = '<Port>{}</Port>'.format(config['port'])
+        if line.strip().startswith('<SslPort>'):
+            line = '<SslPort>{}</SslPort>'.format(config['ssl-port'])
+        print(line,end='')
+    hookenv.open_port(config['port'],'TCP')
+    hookenv.open_port(config['ssl-port'],'TCP')
     service_start('sonarr.service')
-    status_set('active','running restored configuration')
-    set_state('sonarr.restored')
+    status_set('active','')
+    set_state('sonarr.configured')
         
-
-#@when_all('sonarr.restored')
-#@when_not('sonarr.configured')
-#def write_configs():
-#    config = hookenv.config()
-#    status_set('maintenance','configuring sonarr')
-#    address = socket.gethostname()
-#    for line in fileinput.input('/etc/default/sonarrplus', inplace=True):
-#        if line.startswith("USER="):
-#            line = "USER={}\n".format(config['sabuser'])
-#        if line.startswith("HOST="):
-#            line = "HOST={}\n".format(address)
-#        if line.startswith("PORT=\n"):
-#            line = "PORT={}".format(config['port'])
-#        print(line,end='') # end statement to avoid inserting new lines at the end of the line
-#    hookenv.open_port(config['port'],'TCP')
-#    service_restart('sonarrplus')
-#    status_set('active','')
-#    set_state('sonarr.configured')
-#    set_state('sonarr.ready')
-
 # TODO add relations
