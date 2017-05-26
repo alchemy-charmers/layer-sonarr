@@ -18,9 +18,9 @@ resources:
 #provides:
 #  provides-relation:
 #    interface: interface-name
-#requires:
-#  requires-relation:
-#    interface: interface-name
+requires:
+  usenet-downloader:
+    interface: usenet-downloader
 #peers:
 #  peer-relation:
 #    interface: interface-name

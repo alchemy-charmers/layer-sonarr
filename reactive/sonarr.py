@@ -3,6 +3,7 @@ from charmhelpers.core import hookenv
 from charmhelpers.fetch import apt_install, add_source, apt_update
 from charmhelpers.core.host import adduser, service_start, service_stop, service_restart, chownr
 from charmhelpers.core.hookenv import status_set, log, resource_get
+from pathlib import Path
 import os
 import random
 import string
@@ -10,6 +11,7 @@ import fileinput
 import socket
 import tarfile
 import shutil
+import time
 
 @when_not('sonarr.installed')
 def install_sonarr():
@@ -83,16 +85,13 @@ WantedBy=multi-user.target
            group=config['sonarruser'],\
            mono='/usr/bin/mono',\
            sonarr='/opt/NzbDrone/NzbDrone.exe'))
-    service_start('sonarr.service')
-    status_set('active','running default config')
     set_state('sonarr.autostart')
 
-@when_all('sonarr.installed','layer-hostname.installed')
+@when_all('sonarr.autostart','layer-hostname.installed')
 @when_not('sonarr.configured')
 def setup_config():
     status_set('maintenance','configuring sonarr')
     config = hookenv.config()
-    service_stop('sonarr.service')
     backups = './backups'
     if config['restore-config']:
         try:
@@ -104,22 +103,57 @@ def setup_config():
         if backupFile:
             with tarfile.open(backupFile,'r:gz') as inFile:
                 inFile.extractall('/home/{}/.config/'.format(config['sonarruser']))
-            chownr('/home/{}/.config/NzbDrone'.format(config['sonarruser']),owner=config['sonarruser'],group=config['sonarruser'])
             log("Restoring config, the restored configuration will override charm port settings",'INFO')
+            chownr('/home/{}'.format(config['sonarruser']),owner=config['sonarruser'],group=config['sonarruser'])
         else:
             log("Add sonarrconfig resource, see juju attach or disable restore-config",'WARN')
             status_set('blocked','waiting for sonarrconfig resource')
             return
-    for line in fileinput.input('/home/{}/.config/NzbDrone/config.xml'.format(config['sonarruser'])):
+    else:
+        service_start('sonarr.service')
+        configFile = Path('/home/{}/.config/NzbDrone/config.xml'.format(config['sonarruser']))
+        while not configFile.is_file():
+            time.sleep(1)
+    for line in fileinput.input('/home/{}/.config/NzbDrone/config.xml'.format(config['sonarruser']),inplace=True):
         if line.strip().startswith('<Port>'):
-            line = '<Port>{}</Port>'.format(config['port'])
+            line = '  <Port>{}</Port>\n'.format(config['port'])
         if line.strip().startswith('<SslPort>'):
-            line = '<SslPort>{}</SslPort>'.format(config['ssl-port'])
+            line = '  <SslPort>{}</SslPort>\n'.format(config['ssl-port'])
+        if line.strip().startswith('<AuthenticationMethod>'):
+            line = '  <AuthenticationMethod>None</AuthenticationMethod>\n'
         print(line,end='')
     hookenv.open_port(config['port'],'TCP')
-    hookenv.open_port(config['ssl-port'],'TCP')
+    # TODO: How does ssl port work for sonarr, looks to require more config
+    #hookenv.open_port(config['ssl-port'],'TCP')
     service_start('sonarr.service')
     status_set('active','')
     set_state('sonarr.configured')
         
-# TODO add relations
+@when_not('usenet-downloader.configured')
+@when_all('usenet-downloader.triggered','usenet-downloader.available','sonarr.configured')
+def configure_downloader(usenetdownloader,*args):
+    import sqlite3
+    import json
+    log("Setting up sabnzbd relation requires editing the database and may not work","WARNING")
+    service_stop('sonarr.service')
+    config = hookenv.config()
+    conn = sqlite3.connect('/home/{}/.config/NzbDrone/nzbdrone.db'.format(config['sonarruser']))
+    c = conn.cursor()
+    c.execute('''SELECT Settings FROM DownloadClients WHERE ConfigContract is "SabnzbdSettings"''')
+    result = c.fetchall()
+    if len(result):
+        log("Modifying existing sabnzbd setting for sonarr.","INFO")
+        row = result[0]
+        settings = json.loads(row[0])
+        settings['port'] = usenetdownloader.port()
+        settings['apiKey'] = usenetdownloader.apikey()
+        settings['host'] = usenetdownloader.hostname()
+        conn.execute('''UPDATE DownloadClients SET Settings = ? WHERE ConfigContract is "SabnzbdSettings"''',(json.dumps(settings),))
+    else:
+        log("Creating sabnzbd setting for sonarr.","INFO")
+        settings = {"tvCategory": "tv", "port": usenetdownloader.port(), "apiKey": usenetdownloader.apikey(), "olderTvPriority": -100, "host": usenetdownloader.hostname(), "useSsl": False, "recentTvPriority": -100}
+        c.execute('''INSERT INTO DownloadClients (Enable,Name,Implementation,Settings,ConfigContract) VALUES (?,?,?,?,?)''',(1,'Sabnzbd','Sabnzbd',json.dumps(settings),'SabnzbdSettings'))
+    conn.commit()
+    service_start('sonarr.service')
+    usenetdownloader.configured()
+   
