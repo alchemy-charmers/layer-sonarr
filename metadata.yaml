@@ -13,7 +13,7 @@ series:
 resources:
   sonarrconfig:
     type: file
-    filename: sonarrconfig.tgz
+    filename: sonarrconfig.zip
     description: "Tar file of configuration folder to restore on install"
 #provides:
 #  provides-relation:

@@ -4,6 +4,7 @@ from charmhelpers.fetch import apt_install, add_source, apt_update
 from charmhelpers.core.host import adduser, service_start, service_stop, service_restart, chownr
 from charmhelpers.core.hookenv import status_set, log, resource_get
 from pathlib import Path
+from zipfile import ZipFile
 import os
 import random
 import string
@@ -101,11 +102,18 @@ def setup_config():
               pass
         backupFile = resource_get('sonarrconfig')
         if backupFile:
-            with tarfile.open(backupFile,'r:gz') as inFile:
-                inFile.extractall('/home/{}/.config/'.format(config['sonarruser']))
+            with ZipFile(backupFile,'r') as inFile:
+            #with tarfile.open(backupFile,'r:gz') as inFile:
+                inFile.extractall('/home/{}/.config/NzbDrone'.format(config['sonarruser']))
             log("Restoring config, the restored configuration will override charm port settings",'INFO')
+            # Turn off indexers
+            config = hookenv.config()
+            conn = sqlite3.connect('/home/{}/.config/NzbDrone/nzbdrone.db'.format(config['sonarruser']))
+            c = conn.cursor()
+            c.execute('''UPDATE Indexers SET EnableRss = 0, EnableSearch = 0''')
+            conn.commit()
             chownr('/home/{}'.format(config['sonarruser']),owner=config['sonarruser'],group=config['sonarruser'])
-        else:
+         else:
             log("Add sonarrconfig resource, see juju attach or disable restore-config",'WARN')
             status_set('blocked','waiting for sonarrconfig resource')
             return
@@ -122,6 +130,7 @@ def setup_config():
         if line.strip().startswith('<AuthenticationMethod>'):
             line = '  <AuthenticationMethod>None</AuthenticationMethod>\n'
         print(line,end='')
+    shutil.chown('/home/{}/.config/NzbDrone/config.xml'.format(config['sonarruser']),user=config['sonarruser'],group=config['sonarruser'])
     hookenv.open_port(config['port'],'TCP')
     # TODO: How does ssl port work for sonarr, looks to require more config
     #hookenv.open_port(config['ssl-port'],'TCP')
