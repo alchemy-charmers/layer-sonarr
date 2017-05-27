@@ -129,15 +129,6 @@ def setup_config():
         while not configFile.is_file():
             time.sleep(1)
     libsonarr.modify_config(port=config['port'],sslport=config['ssl-port'],auth='None')
-    #for line in fileinput.input('/home/{}/.config/NzbDrone/config.xml'.format(config['sonarruser']),inplace=True):
-    #    if line.strip().startswith('<Port>'):
-    #        line = '  <Port>{}</Port>\n'.format(config['port'])
-    #    if line.strip().startswith('<SslPort>'):
-    #        line = '  <SslPort>{}</SslPort>\n'.format(config['ssl-port'])
-    #    if line.strip().startswith('<AuthenticationMethod>'):
-    #        line = '  <AuthenticationMethod>None</AuthenticationMethod>\n'
-    #    print(line,end='')
-    #shutil.chown('/home/{}/.config/NzbDrone/config.xml'.format(config['sonarruser']),user=config['sonarruser'],group=config['sonarruser'])
     hookenv.open_port(config['port'],'TCP')
     # TODO: How does ssl port work for sonarr, looks to require more config
     #hookenv.open_port(config['ssl-port'],'TCP')
