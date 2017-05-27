@@ -13,6 +13,8 @@ import socket
 import tarfile
 import shutil
 import time
+import sqlite3
+import json
 
 @when_not('sonarr.installed')
 def install_sonarr():
@@ -113,7 +115,7 @@ def setup_config():
             c.execute('''UPDATE Indexers SET EnableRss = 0, EnableSearch = 0''')
             conn.commit()
             chownr('/home/{}'.format(config['sonarruser']),owner=config['sonarruser'],group=config['sonarruser'])
-         else:
+        else:
             log("Add sonarrconfig resource, see juju attach or disable restore-config",'WARN')
             status_set('blocked','waiting for sonarrconfig resource')
             return
@@ -141,8 +143,6 @@ def setup_config():
 @when_not('usenet-downloader.configured')
 @when_all('usenet-downloader.triggered','usenet-downloader.available','sonarr.configured')
 def configure_downloader(usenetdownloader,*args):
-    import sqlite3
-    import json
     log("Setting up sabnzbd relation requires editing the database and may not work","WARNING")
     service_stop('sonarr.service')
     config = hookenv.config()
