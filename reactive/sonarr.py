@@ -5,7 +5,9 @@ from charmhelpers.core.host import adduser, service_start, service_stop, service
 from charmhelpers.core.hookenv import status_set, log, resource_get
 from pathlib import Path
 from zipfile import ZipFile
+
 import os
+import subprocess
 import random
 import string
 import fileinput
@@ -88,6 +90,7 @@ WantedBy=multi-user.target
            group=config['sonarruser'],\
            mono='/usr/bin/mono',\
            sonarr='/opt/NzbDrone/NzbDrone.exe'))
+    subprocess.check_call("systemctl enable sonarr.service",shell=True)
     set_state('sonarr.autostart')
 
 @when_all('sonarr.autostart','layer-hostname.installed')
