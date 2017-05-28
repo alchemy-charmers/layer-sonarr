@@ -81,9 +81,10 @@ Group={group}
 
 Type=simple
 ExecStart={mono} --debug {sonarr} -nobrowser
+ExecStopPost=/usr/bin/killall -9 mono
 TimeoutStopSec=20
 KillMode=process
-Restart=on-failure
+Restart=always
 
 [Install]
 WantedBy=multi-user.target
@@ -128,7 +129,8 @@ def setup_config():
         configFile = Path('/home/{}/.config/NzbDrone/config.xml'.format(config['sonarruser']))
         while not configFile.is_file():
             time.sleep(1)
-    libsonarr.modify_config(port=config['port'],sslport=config['ssl-port'],auth='None')
+    #libsonarr.modify_config(port=config['port'],sslport=config['ssl-port'],auth='None')
+    libsonarr.modify_config(port=config['port'],sslport=config['ssl-port'])
     hookenv.open_port(config['port'],'TCP')
     # TODO: How does ssl port work for sonarr, looks to require more config
     #hookenv.open_port(config['ssl-port'],'TCP')
