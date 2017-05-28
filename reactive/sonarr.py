@@ -129,8 +129,7 @@ def setup_config():
         configFile = Path('/home/{}/.config/NzbDrone/config.xml'.format(config['sonarruser']))
         while not configFile.is_file():
             time.sleep(1)
-    #libsonarr.modify_config(port=config['port'],sslport=config['ssl-port'],auth='None')
-    libsonarr.modify_config(port=config['port'],sslport=config['ssl-port'])
+    libsonarr.modify_config(port=config['port'],sslport=config['ssl-port'],urlbase=None)
     hookenv.open_port(config['port'],'TCP')
     # TODO: How does ssl port work for sonarr, looks to require more config
     #hookenv.open_port(config['ssl-port'],'TCP')

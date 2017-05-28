@@ -8,12 +8,14 @@ import shutil
 def HelloWorld():
     hookenv.log("Hello World!","INFO")
 
-def modify_config(port=None,sslport=None,auth=None):
+def modify_config(port=None,sslport=None,auth=None,urlbase=None):
     config = hookenv.config()
     configFile = '/home/{}/.config/NzbDrone/config.xml'.format(config['sonarruser'])
     for line in fileinput.input(configFile,inplace=True):
         if line.strip().startswith('<Port>') and port:
             line = '  <Port>{}</Port>\n'.format(port)
+        if line.strip().startswith('<UrlBase>') and urlbase:
+            line = '  <UrlBase></UrlBase>\n'
         if line.strip().startswith('<SslPort>') and sslport:
             line = '  <SslPort>{}</SslPort>\n'.format(sslport)
         if line.strip().startswith('<AuthenticationMethod>') and auth:
