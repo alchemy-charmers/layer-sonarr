@@ -2,3 +2,9 @@ hello:
   description: Print a familiar message to log
 disable-auth:
   description: Turn off authentication
+start:
+  description: Start sonarr service
+stop:
+  description: Stop sonarr service
+restart:
+  description: Restart sonarr service

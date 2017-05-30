@@ -1,0 +1,4 @@
+#!/bin/bash
+
+systemctl stop sonarr.service
+juju-log -l "INFO" Sonarr stopped

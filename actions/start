@@ -1,0 +1,4 @@
+#!/bin/bash
+
+systemctl start sonarr.service
+juju-log -l "INFO" Sonarr started

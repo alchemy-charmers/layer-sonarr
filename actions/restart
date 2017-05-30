@@ -1,0 +1,4 @@
+#!/bin/bash
+
+systemctl restart sonarr.service
+juju-log -l "INFO" Sonarr restarted
