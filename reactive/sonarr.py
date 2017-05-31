@@ -110,16 +110,16 @@ def setup_config():
         backupFile = resource_get('sonarrconfig')
         if backupFile:
             with ZipFile(backupFile,'r') as inFile:
-            #with tarfile.open(backupFile,'r:gz') as inFile:
                 inFile.extractall('/home/{}/.config/NzbDrone'.format(config['sonarruser']))
             log("Restoring config, the restored configuration will override charm port settings",'INFO')
             # Turn off indexers
-            config = hookenv.config()
-            conn = sqlite3.connect('/home/{}/.config/NzbDrone/nzbdrone.db'.format(config['sonarruser']))
-            c = conn.cursor()
-            c.execute('''UPDATE Indexers SET EnableRss = 0, EnableSearch = 0''')
-            conn.commit()
-            chownr('/home/{}'.format(config['sonarruser']),owner=config['sonarruser'],group=config['sonarruser'])
+            libsonarr.set_indexers(False)
+            #config = hookenv.config()
+            #conn = sqlite3.connect('/home/{}/.config/NzbDrone/nzbdrone.db'.format(config['sonarruser']))
+            #c = conn.cursor()
+            #c.execute('''UPDATE Indexers SET EnableRss = 0, EnableSearch = 0''')
+            #conn.commit()
+            #chownr('/home/{}'.format(config['sonarruser']),owner=config['sonarruser'],group=config['sonarruser'])
         else:
             log("Add sonarrconfig resource, see juju attach or disable restore-config",'WARN')
             status_set('blocked','waiting for sonarrconfig resource')
@@ -148,7 +148,7 @@ def configure_downloader(usenetdownloader,*args):
     c.execute('''SELECT Settings FROM DownloadClients WHERE ConfigContract is "SabnzbdSettings"''')
     result = c.fetchall()
     if len(result):
-        log("Modifying existing sabnzbd setting for sonarr.","INFO")
+        log("Modifying existing sabnzbd setting for sonarr","INFO")
         row = result[0]
         settings = json.loads(row[0])
         settings['port'] = usenetdownloader.port()
