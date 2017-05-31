@@ -1,5 +1,3 @@
-hello:
-  description: Print a familiar message to log
 disable-auth:
   description: Turn off authentication
 start:
