@@ -50,5 +50,5 @@ def set_indexers(status):
     else:
         c.execute('''UPDATE Indexers SET EnableRss = 0, EnableSearch = 0''')
     conn.commit()
-    chownr('/home/{}'.format(config['sonarruser']),owner=config['sonarruser'],group=config['sonarruser'])
+    host.chownr('/home/{}'.format(config['sonarruser']),owner=config['sonarruser'],group=config['sonarruser'])
  
