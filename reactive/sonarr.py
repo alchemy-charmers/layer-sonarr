@@ -168,7 +168,6 @@ def configure_downloader(usenetdownloader,*args):
 def configure_plex(plexinfo,*args):
   log("Setting up plex relation requires editing the database and may not work","WARNING")
   config = hookenv.config()
-  log('Received: {}, {}, {}, {}'.format(plexinfo.hostname(), plexinfo.port(), plexinfo.user(), plexinfo.passwd()),'WARNING')
   libsonarr.setup_plex(hostname=plexinfo.hostname(),port=plexinfo.port(),user=plexinfo.user(),passwd=plexinfo.passwd())
   plexinfo.configured()
 
