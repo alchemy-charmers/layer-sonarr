@@ -21,6 +21,8 @@ resources:
 requires:
   usenet-downloader:
     interface: usenet-downloader
+  plex-info:
+    interface: plex-info
 #peers:
 #  peer-relation:
 #    interface: interface-name
