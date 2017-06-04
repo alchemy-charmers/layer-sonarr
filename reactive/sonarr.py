@@ -85,6 +85,7 @@ ExecStopPost=/usr/bin/killall -9 mono
 TimeoutStopSec=20
 KillMode=process
 Restart=always
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
