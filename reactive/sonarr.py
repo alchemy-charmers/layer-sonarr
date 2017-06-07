@@ -56,7 +56,7 @@ gX27DCbagJxljizL7n8mzeGG4qopDEU0jQ0sAXVh
 
 ''')
     apt_update()
-    adduser(config['sonarruser'],password=r''''''.join([random.choice(string.printable) for _ in range(random.randint(8, 12))]),home_dir='/home/'+config['sonarruser'])
+    adduser(config['sonarruser'],password="",shell='/bin/False',home_dir='/home/'+config['sonarruser'])
     apt_install('nzbdrone')
     os.chmod('/opt/',0o777)
     shutil.chown('/opt/NzbDrone',user=config['sonarruser'],group=config['sonarruser'])

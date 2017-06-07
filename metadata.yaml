@@ -14,15 +14,9 @@ resources:
   sonarrconfig:
     type: file
     filename: sonarrconfig.zip
-    description: "Tar file of configuration folder to restore on install"
-#provides:
-#  provides-relation:
-#    interface: interface-name
+    description: "Zip file of sonarr backup to restore"
 requires:
   usenet-downloader:
     interface: usenet-downloader
   plex-info:
     interface: plex-info
-#peers:
-#  peer-relation:
-#    interface: interface-name
