@@ -1,5 +1,5 @@
 options:
-  sonarruser:
+  sonarr-user:
     type: string
     default: "sonarruser"
     description: "The user to install sonarr under"

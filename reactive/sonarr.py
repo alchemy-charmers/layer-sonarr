@@ -1,29 +1,25 @@
 from charms.reactive import when, when_all, when_not, set_state
-from charmhelpers.core import hookenv
 from charmhelpers.fetch import apt_install, add_source, apt_update
-from charmhelpers.core.host import adduser, service_start, service_stop, service_restart, chownr
-from charmhelpers.core.hookenv import status_set, log, resource_get
+from charmhelpers.core import host
+from charmhelpers.core import hookenv
 from pathlib import Path
 from zipfile import ZipFile
+from libsonarr import SonarrHelper
 
-import libsonarr
 import os
 import subprocess
-import random
-import string
-import fileinput
-import socket
-import tarfile
 import shutil
 import time
 import sqlite3
 import json
 
+sh = SonarrHelper()
+
+
 @when_not('sonarr.installed')
 def install_sonarr():
-    config = hookenv.config()
-    status_set('maintenance','installing sonarr')
-    add_source("deb http://apt.sonarr.tv/ master main",key='''
+    hookenv.status_set('maintenance', 'installing sonarr')
+    add_source("deb http://apt.sonarr.tv/ master main", key='''
 -----BEGIN PGP PUBLIC KEY BLOCK-----
 
 mQENBFIdLCUBCADL27NXM4ZdnIL9e+2wYlHAT8PNEVVsJzS6xYaNaRF6Z9w1qz9N
@@ -56,20 +52,20 @@ gX27DCbagJxljizL7n8mzeGG4qopDEU0jQ0sAXVh
 
 ''')
     apt_update()
-    adduser(config['sonarruser'],password="",shell='/bin/False',home_dir='/home/'+config['sonarruser'])
+    host.adduser(sh.user, password="", shell='/bin/False', home_dir=sh.home_dir)
     apt_install('nzbdrone')
-    os.chmod('/opt/',0o777)
-    shutil.chown('/opt/NzbDrone',user=config['sonarruser'],group=config['sonarruser'])
-    chownr('/opt/NzbDrone',owner=config['sonarruser'],group=config['sonarruser'])
-    status_set('maintenance','installed')
+    os.chmod('/opt/', 0o777)
+    shutil.chown('/opt/NzbDrone', user=sh.user, group=sh.user)
+    host.chownr('/opt/NzbDrone', owner=sh.user, group=sh.user)
+    hookenv.status_set('maintenance', 'installed')
     set_state('sonarr.installed')
+
 
 @when('sonarr.installed')
 @when_not('sonarr.autostart')
 def auto_start():
-    status_set('maintenance','setting up auto-start')
-    with open('/lib/systemd/system/sonarr.service','w') as serviceFile:
-        config = hookenv.config()
+    hookenv.status_set('maintenance', 'setting up auto-start')
+    with open('/lib/systemd/system/sonarr.service', 'w') as serviceFile:
         serviceFile.write('''
 [Unit]
 Description=Sonarr Daemon
@@ -89,87 +85,89 @@ RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
-'''.format(user=config['sonarruser'],\
-           group=config['sonarruser'],\
-           mono='/usr/bin/mono',\
+'''.format(user=sh.user,
+           group=sh.user,
+           mono='/usr/bin/mono',
            sonarr='/opt/NzbDrone/NzbDrone.exe'))
-    subprocess.check_call("systemctl enable sonarr.service",shell=True)
+    subprocess.check_call("systemctl enable sonarr.service", shell=True)
     set_state('sonarr.autostart')
 
-@when_all('sonarr.autostart','layer-hostname.installed')
+
+@when_all('sonarr.autostart', 'layer-hostname.installed')
 @when_not('sonarr.configured')
 def setup_config():
-    status_set('maintenance','configuring sonarr')
-    config = hookenv.config()
+    hookenv.status_set('maintenance', 'configuring sonarr')
     backups = './backups'
-    if config['restore-config']:
+    if sh.charm_config['restore-config']:
         try:
             os.mkdir(backups)
         except OSError as e:
             if e.errno is 17:
-              pass
-        backupFile = resource_get('sonarrconfig')
+                pass
+        backupFile = hookenv.resource_get('sonarrconfig')
         if backupFile:
-            with ZipFile(backupFile,'r') as inFile:
-                inFile.extractall('/home/{}/.config/NzbDrone'.format(config['sonarruser']))
-            log("Restoring config, the restored configuration will override charm port settings",'INFO')
+            with ZipFile(backupFile, 'r') as inFile:
+                inFile.extractall(sh.config_dir)
+            hookenv.log("Restoring config, indexers are disabled enable with action when configuration has been checked", 'INFO')
             # Turn off indexers
-            libsonarr.set_indexers(False)
-            #config = hookenv.config()
-            #conn = sqlite3.connect('/home/{}/.config/NzbDrone/nzbdrone.db'.format(config['sonarruser']))
-            #c = conn.cursor()
-            #c.execute('''UPDATE Indexers SET EnableRss = 0, EnableSearch = 0''')
-            #conn.commit()
-            #chownr('/home/{}'.format(config['sonarruser']),owner=config['sonarruser'],group=config['sonarruser'])
+            sh.set_indexers(False)
         else:
-            log("Add sonarrconfig resource, see juju attach or disable restore-config",'WARN')
-            status_set('blocked','waiting for sonarrconfig resource')
+            hookenv.log("Add sonarrconfig resource, see juju attach or disable restore-config", 'WARN')
+            hookenv.status_set('blocked', 'waiting for sonarrconfig resource')
             return
     else:
-        service_start('sonarr.service')
-        configFile = Path('/home/{}/.config/NzbDrone/config.xml'.format(config['sonarruser']))
+        host.service_start(sh.service_name)
+        configFile = Path(sh.config_file)
         while not configFile.is_file():
             time.sleep(1)
-    libsonarr.modify_config(port=config['port'],sslport=config['ssl-port'],urlbase='None')
-    hookenv.open_port(config['port'],'TCP')
+    sh.modify_config(port=sh.charm_config['port'], 
+                     sslport=sh.charm_config['ssl-port'], 
+                     urlbase='None')
+    hookenv.open_port(sh.charm_config['port'], 'TCP')
     # TODO: How does ssl port work for sonarr, looks to require more config
-    #hookenv.open_port(config['ssl-port'],'TCP')
-    service_start('sonarr.service')
-    status_set('active','')
+    # hookenv.open_port(config['ssl-port'],'TCP')
+    host.service_start(sh.service_name)
+    hookenv.status_set('active', '')
     set_state('sonarr.configured')
         
+
 @when_not('usenet-downloader.configured')
-@when_all('usenet-downloader.triggered','usenet-downloader.available','sonarr.configured')
-def configure_downloader(usenetdownloader,*args):
-    log("Setting up sabnzbd relation requires editing the database and may not work","WARNING")
-    service_stop('sonarr.service')
-    config = hookenv.config()
-    conn = sqlite3.connect('/home/{}/.config/NzbDrone/nzbdrone.db'.format(config['sonarruser']))
+@when_all('usenet-downloader.triggered', 'usenet-downloader.available', 'sonarr.configured')
+def configure_downloader(usenetdownloader, *args):
+    hookenv.log("Setting up sabnzbd relation requires editing the database and may not work", "WARNING")
+    host.service_stop(sh.service_name)
+    conn = sqlite3.connect(sh.database_file)
     c = conn.cursor()
     c.execute('''SELECT Settings FROM DownloadClients WHERE ConfigContract is "SabnzbdSettings"''')
     result = c.fetchall()
     if len(result):
-        log("Modifying existing sabnzbd setting for sonarr","INFO")
+        hookenv.log("Modifying existing sabnzbd setting for sonarr", "INFO")
         row = result[0]
         settings = json.loads(row[0])
         settings['port'] = usenetdownloader.port()
         settings['apiKey'] = usenetdownloader.apikey()
         settings['host'] = usenetdownloader.hostname()
-        conn.execute('''UPDATE DownloadClients SET Settings = ? WHERE ConfigContract is "SabnzbdSettings"''',(json.dumps(settings),))
+        conn.execute('''UPDATE DownloadClients SET Settings = ? WHERE ConfigContract is "SabnzbdSettings"''',
+                     (json.dumps(settings),))
     else:
-        log("Creating sabnzbd setting for sonarr.","INFO")
-        settings = {"tvCategory": "tv", "port": usenetdownloader.port(), "apiKey": usenetdownloader.apikey(), "olderTvPriority": -100, "host": usenetdownloader.hostname(), "useSsl": False, "recentTvPriority": -100}
-        c.execute('''INSERT INTO DownloadClients (Enable,Name,Implementation,Settings,ConfigContract) VALUES (?,?,?,?,?)''',(1,'Sabnzbd','Sabnzbd',json.dumps(settings),'SabnzbdSettings'))
+        hookenv.log("Creating sabnzbd setting for sonarr.", "INFO")
+        settings = {"tvCategory": "tv", "port": usenetdownloader.port(), "apiKey": usenetdownloader.apikey(), 
+                    "olderTvPriority": -100, "host": usenetdownloader.hostname(), "useSsl": False, "recentTvPriority": -100}
+        c.execute('''INSERT INTO DownloadClients
+                  (Enable,Name,Implementation,Settings,ConfigContract) VALUES
+                  (?,?,?,?,?)''', 
+                  (1, 'Sabnzbd', 'Sabnzbd', json.dumps(settings), 'SabnzbdSettings'))
     conn.commit()
-    service_start('sonarr.service')
+    host.service_start(sh.service_name)
     usenetdownloader.configured()
 
+
 @when_not('plex-info.configured')
-@when_all('plex-info.triggered','plex-info.available','sonarr.configured')
-def configure_plex(plexinfo,*args):
-  log("Setting up plex relation requires editing the database and may not work","WARNING")
-  config = hookenv.config()
-  libsonarr.setup_plex(hostname=plexinfo.hostname(),port=plexinfo.port(),user=plexinfo.user(),passwd=plexinfo.passwd())
-  plexinfo.configured()
+@when_all('plex-info.triggered', 'plex-info.available', 'sonarr.configured')
+def configure_plex(plexinfo, *args):
+    hookenv.log("Setting up plex relation requires editing the database and may not work", "WARNING")
+    sh.setup_plex(hostname=plexinfo.hostname(), port=plexinfo.port(),
+                  user=plexinfo.user(), passwd=plexinfo.passwd())
+    plexinfo.configured()
 
 
