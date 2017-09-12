@@ -7,11 +7,8 @@ from zipfile import ZipFile
 from libsonarr import SonarrHelper
 
 import os
-import subprocess
 import shutil
 import time
-import sqlite3
-import json
 
 sh = SonarrHelper()
 
@@ -65,31 +62,7 @@ gX27DCbagJxljizL7n8mzeGG4qopDEU0jQ0sAXVh
 @when_not('sonarr.autostart')
 def auto_start():
     hookenv.status_set('maintenance', 'setting up auto-start')
-    with open('/lib/systemd/system/sonarr.service', 'w') as serviceFile:
-        serviceFile.write('''
-[Unit]
-Description=Sonarr Daemon
-After=syslog.target network.target
-
-[Service]
-User={user}
-Group={group}
-
-Type=simple
-ExecStart={mono} --debug {sonarr} -nobrowser
-ExecStopPost=/usr/bin/killall -9 mono
-TimeoutStopSec=20
-KillMode=process
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-'''.format(user=sh.user,
-           group=sh.user,
-           mono='/usr/bin/mono',
-           sonarr='/opt/NzbDrone/NzbDrone.exe'))
-    subprocess.check_call("systemctl enable sonarr.service", shell=True)
+    sh.setup_systemd()
     set_state('sonarr.autostart')
 
 
@@ -120,12 +93,8 @@ def setup_config():
         configFile = Path(sh.config_file)
         while not configFile.is_file():
             time.sleep(1)
-    sh.modify_config(port=sh.charm_config['port'], 
-                     sslport=sh.charm_config['ssl-port'], 
-                     urlbase='None')
+    sh.modify_config(port=sh.charm_config['port'], urlbase='None')
     hookenv.open_port(sh.charm_config['port'], 'TCP')
-    # TODO: How does ssl port work for sonarr, looks to require more config
-    # hookenv.open_port(config['ssl-port'],'TCP')
     host.service_start(sh.service_name)
     hookenv.status_set('active', '')
     set_state('sonarr.configured')
@@ -135,30 +104,9 @@ def setup_config():
 @when_all('usenet-downloader.triggered', 'usenet-downloader.available', 'sonarr.configured')
 def configure_downloader(usenetdownloader, *args):
     hookenv.log("Setting up sabnzbd relation requires editing the database and may not work", "WARNING")
-    host.service_stop(sh.service_name)
-    conn = sqlite3.connect(sh.database_file)
-    c = conn.cursor()
-    c.execute('''SELECT Settings FROM DownloadClients WHERE ConfigContract is "SabnzbdSettings"''')
-    result = c.fetchall()
-    if len(result):
-        hookenv.log("Modifying existing sabnzbd setting for sonarr", "INFO")
-        row = result[0]
-        settings = json.loads(row[0])
-        settings['port'] = usenetdownloader.port()
-        settings['apiKey'] = usenetdownloader.apikey()
-        settings['host'] = usenetdownloader.hostname()
-        conn.execute('''UPDATE DownloadClients SET Settings = ? WHERE ConfigContract is "SabnzbdSettings"''',
-                     (json.dumps(settings),))
-    else:
-        hookenv.log("Creating sabnzbd setting for sonarr.", "INFO")
-        settings = {"tvCategory": "tv", "port": usenetdownloader.port(), "apiKey": usenetdownloader.apikey(), 
-                    "olderTvPriority": -100, "host": usenetdownloader.hostname(), "useSsl": False, "recentTvPriority": -100}
-        c.execute('''INSERT INTO DownloadClients
-                  (Enable,Name,Implementation,Settings,ConfigContract) VALUES
-                  (?,?,?,?,?)''', 
-                  (1, 'Sabnzbd', 'Sabnzbd', json.dumps(settings), 'SabnzbdSettings'))
-    conn.commit()
-    host.service_start(sh.service_name)
+    sh.setup_sabnzbd(port=usenetdownloader.port(),
+                     apikey=usenetdownloader.apikey(),
+                     hostname=usenetdownloader.apikey())
     usenetdownloader.configured()
 
 

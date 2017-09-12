@@ -1,26 +1,27 @@
 #!/usr/bin/python3
 from charmhelpers.core import hookenv
 from charmhelpers.core import host  # adduser, service_start, service_stop, service_restart, chownr
+from charmhelpers.core import templating
+
 import fileinput
 import shutil
 import sqlite3
 import json
+import subprocess
 
 
 class SonarrHelper:
     def __init__(self):
         self.charm_config = hookenv.config()
         self.user = self.charm_config['sonarr-user']
+        self.executable = '/opt/NzbDrone/NzbDrone.exe'
+        self.mono_path = '/usr/bin/mono'
         self.home_dir = '/home/{}'.format(self.user)
-        # self.install_dir = self.home_dir + '/CouchPotatoServer'
-        # self.executable = self.install_dir + '/CouchPotato.py'
         self.config_dir = self.home_dir + '/.config/NzbDrone'
-        # self.database_dir = self.config_dir + '/database'
         self.database_file = self.config_dir + '/nzbdrone.db'
         self.config_file = self.config_dir + '/config.xml'
         self.service_name = 'sonarr.service'
-        # self.couch_config = configparser.ConfigParser()
-        # self.couch_config.read(self.settings_file)
+        self.service_file = '/lib/systemd/system/' + self.service_name
 
     def modify_config(self, port=None, sslport=None, auth=None, urlbase=None):
         '''
@@ -63,6 +64,43 @@ class SonarrHelper:
         host.chownr(self.home_dir, owner=self.charm_config['sonarr-user'],
                     group=self.charm_config['sonarr-user'])
      
+    def setup_systemd(self):
+        context = {'user': self.user,
+                   'group': self.user,
+                   'mono': self.mono_path,
+                   'sonarr': self.executable
+                   }
+        templating.render(source=self.service_name, 
+                          target=self.service_file, 
+                          context=context)
+        subprocess.check_call("systemctl enable {}".format(self.service_name), shell=True)
+
+    def setup_sabnzbd(self, port, apikey, hostname):
+        host.service_stop(self.service_name)
+        conn = sqlite3.connect(self.database_file)
+        c = conn.cursor()
+        c.execute('''SELECT Settings FROM DownloadClients WHERE ConfigContract is "SabnzbdSettings"''')
+        result = c.fetchall()
+        if len(result):
+            hookenv.log("Modifying existing sabnzbd setting for sonarr", "INFO")
+            row = result[0]
+            settings = json.loads(row[0])
+            settings['port'] = port
+            settings['apiKey'] = apikey
+            settings['host'] = hostname
+            conn.execute('''UPDATE DownloadClients SET Settings = ? WHERE ConfigContract is "SabnzbdSettings"''',
+                         (json.dumps(settings),))
+        else:
+            hookenv.log("Creating sabnzbd setting for sonarr.", "INFO")
+            settings = {"tvCategory": "tv", "port": port, "apiKey": apikey, 
+                        "olderTvPriority": -100, "host": hostname, "useSsl": False, "recentTvPriority": -100}
+            c.execute('''INSERT INTO DownloadClients
+                      (Enable,Name,Implementation,Settings,ConfigContract) VALUES
+                      (?,?,?,?,?)''', 
+                      (1, 'Sabnzbd', 'Sabnzbd', json.dumps(settings), 'SabnzbdSettings'))
+        conn.commit()
+        host.service_start(self.service_name)
+
     def setup_plex(self, hostname, port, user=None, passwd=None):
         '''' Modify an existing plex Notification or create one with the given settings
         hostname: The address for the plex server
