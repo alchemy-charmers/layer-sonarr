@@ -9,6 +9,7 @@ from libsonarr import SonarrHelper
 import os
 import shutil
 import time
+import socket
 
 sh = SonarrHelper()
 
@@ -106,7 +107,7 @@ def configure_downloader(usenetdownloader, *args):
     hookenv.log("Setting up sabnzbd relation requires editing the database and may not work", "WARNING")
     sh.setup_sabnzbd(port=usenetdownloader.port(),
                      apikey=usenetdownloader.apikey(),
-                     hostname=usenetdownloader.apikey())
+                     hostname=usenetdownloader.hostname())
     usenetdownloader.configured()
 
 
@@ -117,5 +118,28 @@ def configure_plex(plexinfo, *args):
     sh.setup_plex(hostname=plexinfo.hostname(), port=plexinfo.port(),
                   user=plexinfo.user(), passwd=plexinfo.passwd())
     plexinfo.configured()
+
+
+@when_all('reverseproxy.triggered', 'reverseproxy.ready')
+@when_not('reverseproxy.configured', 'reverseproxy.departed')
+def configure_reverseproxy(reverseproxy, *args):
+    hookenv.log("Setting up reverseproxy", "INFO")
+    proxy_info = {'urlbase': sh.charm_config['proxy-url'],
+                  'subdomain': sh.charm_config['proxy-domain'],
+                  'group_id': 'sonarr',
+                  'external_port': sh.charm_config['proxy-port'],
+                  'internal_host': socket.getfqdn(),
+                  'internal_port': sh.charm_config['port']
+                  } 
+    reverseproxy.configure(proxy_info)
+    sh.modify_config(urlbase=sh.charm_config['proxy-url'])
+    host.service_restart(sh.service_name)
+
+
+@when_all('reverseproxy.triggered', 'reverseproxy.departed')
+def remove_urlbase(reverseproxy, *args):
+    hookenv.log("Removing reverseproxy configuration", "INFO")
+    sh.modify_config(urlbase='None')
+    host.service_restart(sh.service_name)
 
 

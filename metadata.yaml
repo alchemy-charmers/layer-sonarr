@@ -20,3 +20,5 @@ requires:
     interface: usenet-downloader
   plex-info:
     interface: plex-info
+  reverseproxy:
+    interface: reverseproxy

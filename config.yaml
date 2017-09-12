@@ -11,3 +11,16 @@ options:
     type: boolean
     default: False
     description: "Restore a previous configuration from resource"
+  proxy-port:
+    type: int
+    default: 443
+    description: "Port to request for reverse proxy access"
+  proxy-domain:
+    type: string
+    default: "sonarr"
+    description: "Subdomain to request from reverse proxy"
+  proxy-url:
+    type: string
+    default: "/sonarr"
+    description: 'Urlbase for revrse proxy, must start with a "/"'
+
