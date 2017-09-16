@@ -3,5 +3,8 @@
 import sys
 sys.path.append('lib')
 
-import libsonarr
-libsonarr.set_indexers(False)
+from libsonarr import SonarrHelper
+
+sh = SonarrHelper()
+
+sh.set_indexers(False)

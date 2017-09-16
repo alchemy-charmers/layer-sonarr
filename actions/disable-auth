@@ -3,5 +3,8 @@
 import sys
 sys.path.append('lib')
 
-import libsonarr
-libsonarr.modify_config(auth="None")
+from libsonarr import SonarrHelper
+
+sh = SonarrHelper()
+
+sh.modify_config(auth="None")

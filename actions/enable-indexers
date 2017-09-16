@@ -2,6 +2,8 @@
 
 import sys
 sys.path.append('lib')
+from libsonarr import SonarrHelper
 
-import libsonarr
-libsonarr.set_indexers(True)
+sh = SonarrHelper()
+
+sh.set_indexers(True)
