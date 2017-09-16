@@ -2,6 +2,7 @@
 
 import sys
 sys.path.append('lib')
+
 from libsonarr import SonarrHelper
 
 sh = SonarrHelper()
