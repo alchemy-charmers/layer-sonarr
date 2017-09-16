@@ -1,7 +1,7 @@
 # Overview
 
 This charm provides [Sonarr][sonarr]. Sonarr is an automatic NZB
-downloader for tv shows, written in python.
+downloader for tv shows.
 
 # Usage
 
