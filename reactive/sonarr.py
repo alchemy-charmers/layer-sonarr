@@ -99,7 +99,7 @@ def setup_config():
     host.service_start(sh.service_name)
     hookenv.status_set('active', '')
     set_state('sonarr.configured')
-        
+
 
 @when_not('usenet-downloader.configured')
 @when_all('usenet-downloader.triggered', 'usenet-downloader.available', 'sonarr.configured')
@@ -126,11 +126,11 @@ def configure_reverseproxy(reverseproxy, *args):
     hookenv.log("Setting up reverseproxy", "INFO")
     proxy_info = {'urlbase': sh.charm_config['proxy-url'],
                   'subdomain': sh.charm_config['proxy-domain'],
-                  'group_id': 'sonarr',
+                  'group_id': sh.charm_config['proxy-group'],
                   'external_port': sh.charm_config['proxy-port'],
                   'internal_host': socket.getfqdn(),
                   'internal_port': sh.charm_config['port']
-                  } 
+                  }
     reverseproxy.configure(proxy_info)
     sh.modify_config(urlbase=sh.charm_config['proxy-url'])
     host.service_restart(sh.service_name)

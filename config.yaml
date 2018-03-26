@@ -23,4 +23,8 @@ options:
     type: string
     default: "/sonarr"
     description: 'Urlbase for revrse proxy, must start with a "/"'
+  proxy-group:
+    type: string
+    default: "sonarr"
+    description: "The name of the backend this charm will use, this should be unique for deployment/reverseproxy. Sonarr is not designed to be run in HA with multiple units grouped"
 
