@@ -97,7 +97,7 @@ def setup_config():
     sh.modify_config(port=sh.charm_config['port'], urlbase='None')
     hookenv.open_port(sh.charm_config['port'], 'TCP')
     host.service_start(sh.service_name)
-    hookenv.status_set('active', '')
+    hookenv.status_set('active', 'Sonarr is ready')
     set_state('sonarr.configured')
 
 
