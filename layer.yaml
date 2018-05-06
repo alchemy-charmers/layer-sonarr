@@ -3,6 +3,6 @@ repo: git@github.com:chris-sanders/layer-sonarr.git
 options:
   backup:
     backup-method: "sync"
-    backup-files: >-
+    backup-files: |-
       /home/{sonarr-user}/.config/NzbDrone/Backups/scheduled
 
