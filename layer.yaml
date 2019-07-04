@@ -1,4 +1,12 @@
-includes: ['layer:basic','layer:version','layer:hostname','layer:backup','interface:usenet-downloader','interface:plex-info', 'interface:reverseproxy']  # if you use any interfaces, add them here
+includes: 
+  - 'layer:basic'
+  - 'layer:service-account'
+  - 'layer:version'
+  - 'layer:hostname'
+  - 'layer:backup'
+  - 'interface:usenet-downloader'
+  - 'interface:plex-info'
+  - 'interface:reverseproxy'
 repo: git@github.com:chris-sanders/layer-sonarr.git
 options:
   backup:
