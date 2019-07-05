@@ -46,10 +46,10 @@ class SonarrHelper:
             if line.strip().startswith('<AuthenticationMethod>') and auth:
                 line = '  <AuthenticationMethod>{}</AuthenticationMethod>\n'.format(auth)
             print(line, end='')
-        shutil.chown(self.config_file, user=self.charm_config['sonarr-user'], group=self.charm_config['sonarr-user'])
+        shutil.chown(self.config_file, user=self.user, group=self.user)
         host.service_restart(self.service_name)
         hookenv.log('sonarr config modified', 'INFO')
-    
+
     def set_indexers(self, status):
         '''Enable or disable all indexer searching based on provided status
         status: True will turn on indexers
@@ -61,17 +61,17 @@ class SonarrHelper:
         else:
             c.execute('''UPDATE Indexers SET EnableRss = 0, EnableSearch = 0''')
         conn.commit()
-        host.chownr(self.home_dir, owner=self.charm_config['sonarr-user'],
-                    group=self.charm_config['sonarr-user'])
-     
+        host.chownr(self.home_dir, owner=self.user,
+                    group=self.user)
+
     def setup_systemd(self):
         context = {'user': self.user,
                    'group': self.user,
                    'mono': self.mono_path,
                    'sonarr': self.executable
                    }
-        templating.render(source=self.service_name, 
-                          target=self.service_file, 
+        templating.render(source=self.service_name,
+                          target=self.service_file,
                           context=context)
         subprocess.check_call("systemctl enable {}".format(self.service_name), shell=True)
 
@@ -92,11 +92,11 @@ class SonarrHelper:
                          (json.dumps(settings),))
         else:
             hookenv.log("Creating sabnzbd setting for sonarr.", "INFO")
-            settings = {"tvCategory": "tv", "port": port, "apiKey": apikey, 
+            settings = {"tvCategory": "tv", "port": port, "apiKey": apikey,
                         "olderTvPriority": -100, "host": hostname, "useSsl": False, "recentTvPriority": -100}
             c.execute('''INSERT INTO DownloadClients
                       (Enable,Name,Implementation,Settings,ConfigContract) VALUES
-                      (?,?,?,?,?)''', 
+                      (?,?,?,?,?)''',
                       (1, 'Sabnzbd', 'Sabnzbd', json.dumps(settings), 'SabnzbdSettings'))
         conn.commit()
         host.service_start(self.service_name)
@@ -120,11 +120,11 @@ class SonarrHelper:
             settings['port'] = port
             settings['username'] = settings['username'] or user
             settings['password'] = settings['password'] or passwd
-            conn.execute('''UPDATE Notifications SET Settings = ? WHERE ConfigContract is "PlexServerSettings"''', 
+            conn.execute('''UPDATE Notifications SET Settings = ? WHERE ConfigContract is "PlexServerSettings"''',
                          (json.dumps(settings),))
         else:
             hookenv.log("Creating plex setting for sonarr.", "INFO")
-            settings = {"host": hostname, "port": port, "username": user or "", "password": passwd or "", 
+            settings = {"host": hostname, "port": port, "username": user or "", "password": passwd or "",
                         "updateLibrary": True, "useSsl": False, "isValid": True}
             c.execute('''INSERT INTO Notifications
                       (Name,OnGrab,onDownload,Settings,Implementation,ConfigContract,OnUpgrade,Tags,OnRename)
@@ -137,8 +137,8 @@ class SonarrHelper:
         host.service_start(self.service_name)
 
 # .schema Notifications
-# CREATE TABLE "Notifications" ("Id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, "Name" TEXT NOT NULL, "OnGrab" INTEGER NOT NULL, 
-#                               "OnDownload" INTEGER NOT NULL, "Settings" TEXT NOT NULL, "Implementation" TEXT NOT NULL, 
+# CREATE TABLE "Notifications" ("Id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, "Name" TEXT NOT NULL, "OnGrab" INTEGER NOT NULL,
+#                               "OnDownload" INTEGER NOT NULL, "Settings" TEXT NOT NULL, "Implementation" TEXT NOT NULL,
 #                               "ConfigContract" TEXT, "OnUpgrade" INTEGER, "Tags" TEXT, "OnRename" INTEGER NOT NULL);
 # sqlite> SELECT * FROM Notifications;
 #    1|Plex|0|1|{

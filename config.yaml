@@ -1,8 +1,4 @@
 options:
-  sonarr-user:
-    type: string
-    default: "sonarruser"
-    description: "The user to install sonarr under"
   port:
     type: int
     default: 8989
