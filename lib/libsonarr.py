@@ -13,7 +13,7 @@ import subprocess
 class SonarrHelper:
     def __init__(self):
         self.charm_config = hookenv.config()
-        self.user = self.charm_config['sonarr-user']
+        self.user = "sonarr"  # This is set in the service-layer configs
         self.executable = '/opt/NzbDrone/NzbDrone.exe'
         self.mono_path = '/usr/bin/mono'
         self.home_dir = '/home/{}'.format(self.user)

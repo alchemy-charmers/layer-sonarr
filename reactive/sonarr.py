@@ -14,6 +14,7 @@ import socket
 sh = SonarrHelper()
 
 
+@when('layer-service-account.configured')
 @when_not('sonarr.installed')
 def install_sonarr():
     hookenv.status_set('maintenance', 'installing sonarr')
@@ -50,7 +51,6 @@ gX27DCbagJxljizL7n8mzeGG4qopDEU0jQ0sAXVh
 
 ''')
     apt_update()
-    host.adduser(sh.user, password="", shell='/bin/False', home_dir=sh.home_dir)
     apt_install('nzbdrone')
     os.chmod('/opt/', 0o777)
     shutil.chown('/opt/NzbDrone', user=sh.user, group=sh.user)
