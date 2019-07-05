@@ -14,4 +14,9 @@ options:
     backup-files: |-
       /home/{sonarr-user}/.config/NzbDrone/Backups/scheduled
   service-account:
-    users: ["sonarr"]
+    users:
+      - 'sonarr'
+    groups:
+      - 'sonarr'
+    membership:
+      - 'sonarr': ['sonarr']
