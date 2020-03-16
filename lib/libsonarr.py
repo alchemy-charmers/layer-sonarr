@@ -25,7 +25,7 @@ class SonarrHelper:
         self.service_file = '/lib/systemd/system/' + self.service_name
         self.kv = unitdata.kv()
         self.deps = [
-            'mono-runtime',
+            'mono-complete',
         ]
 
     def modify_config(self, port=None, sslport=None, auth=None, urlbase=None):
