@@ -29,8 +29,8 @@ def handle_upgrade():
 def install_sonarr():
     hookenv.status_set('maintenance', 'installing sonarr')
     # Mono
-    # add_source("deb https://download.mono-project.com/repo/ubuntu stable-{series} main", key="3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF")
-    # sh.kv.set('mono-source', 'mono-project')
+    add_source("deb https://download.mono-project.com/repo/ubuntu stable-{series} main", key="3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF")
+    sh.kv.set('mono-source', 'mono-project')
     # Sonarr
     add_source("deb http://apt.sonarr.tv/ master main", key='''
 -----BEGIN PGP PUBLIC KEY BLOCK-----
@@ -65,7 +65,7 @@ gX27DCbagJxljizL7n8mzeGG4qopDEU0jQ0sAXVh
 
 ''')
     apt_update()
-    dependencies = []  # sh.deps
+    dependencies = sh.deps
     dependencies.append('nzbdrone')
     apt_install(dependencies)
     os.chmod('/opt/', 0o777)
