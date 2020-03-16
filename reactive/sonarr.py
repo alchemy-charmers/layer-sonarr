@@ -55,6 +55,7 @@ gX27DCbagJxljizL7n8mzeGG4qopDEU0jQ0sAXVh
     os.chmod('/opt/', 0o777)
     shutil.chown('/opt/NzbDrone', user=sh.user, group=sh.user)
     host.chownr('/opt/NzbDrone', owner=sh.user, group=sh.user)
+    host.mkdir(sh.home_dir, owner=sh.user, group=sh.user, perms=0o755)
     hookenv.status_set('maintenance', 'installed')
     set_state('sonarr.installed')
 
@@ -93,7 +94,8 @@ def setup_config():
         host.service_start(sh.service_name)
         configFile = Path(sh.config_file)
         while not configFile.is_file():
-            time.sleep(1)
+            hookenv.log("Waiting for service to start", 'INFO')
+            time.sleep(5)
     sh.modify_config(port=sh.charm_config['port'], urlbase='None')
     hookenv.open_port(sh.charm_config['port'], 'TCP')
     host.service_start(sh.service_name)
