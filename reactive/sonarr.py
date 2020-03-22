@@ -1,4 +1,4 @@
-from charms.reactive import when, when_all, when_not, set_state
+from charms.reactive import when, when_all, when_not, set_state, hook
 from charmhelpers.fetch import apt_install, add_source, apt_update
 from charmhelpers.core import host
 from charmhelpers.core import hookenv
@@ -14,10 +14,24 @@ import socket
 sh = SonarrHelper()
 
 
+@hook('upgrade-charm')
+def handle_upgrade():
+    if not sh.kv.get('mono-source'):
+        add_source("deb https://download.mono-project.com/repo/ubuntu stable-{series} main", key="3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF")
+        apt_update()
+        apt_install(sh.deps)
+        host.service_restart(sh.service_name)
+        sh.kv.set('mono-source', 'mono-project')
+
+
 @when('layer-service-account.configured')
 @when_not('sonarr.installed')
 def install_sonarr():
     hookenv.status_set('maintenance', 'installing sonarr')
+    # Mono
+    add_source("deb https://download.mono-project.com/repo/ubuntu stable-{series} main", key="3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF")
+    sh.kv.set('mono-source', 'mono-project')
+    # Sonarr
     add_source("deb http://apt.sonarr.tv/ master main", key='''
 -----BEGIN PGP PUBLIC KEY BLOCK-----
 
@@ -51,10 +65,13 @@ gX27DCbagJxljizL7n8mzeGG4qopDEU0jQ0sAXVh
 
 ''')
     apt_update()
-    apt_install('nzbdrone')
+    dependencies = sh.deps
+    dependencies.append('nzbdrone')
+    apt_install(dependencies)
     os.chmod('/opt/', 0o777)
     shutil.chown('/opt/NzbDrone', user=sh.user, group=sh.user)
     host.chownr('/opt/NzbDrone', owner=sh.user, group=sh.user)
+    host.mkdir(sh.home_dir, owner=sh.user, group=sh.user, perms=0o750)
     hookenv.status_set('maintenance', 'installed')
     set_state('sonarr.installed')
 
@@ -93,7 +110,8 @@ def setup_config():
         host.service_start(sh.service_name)
         configFile = Path(sh.config_file)
         while not configFile.is_file():
-            time.sleep(1)
+            hookenv.log("Waiting for service to start", 'INFO')
+            time.sleep(5)
     sh.modify_config(port=sh.charm_config['port'], urlbase='None')
     hookenv.open_port(sh.charm_config['port'], 'TCP')
     host.service_start(sh.service_name)

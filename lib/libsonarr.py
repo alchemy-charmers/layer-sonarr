@@ -2,6 +2,7 @@
 from charmhelpers.core import hookenv
 from charmhelpers.core import host  # adduser, service_start, service_stop, service_restart, chownr
 from charmhelpers.core import templating
+from charmhelpers.core import unitdata
 
 import fileinput
 import shutil
@@ -22,6 +23,10 @@ class SonarrHelper:
         self.config_file = self.config_dir + '/config.xml'
         self.service_name = 'sonarr.service'
         self.service_file = '/lib/systemd/system/' + self.service_name
+        self.kv = unitdata.kv()
+        self.deps = [
+            'mono-complete',
+        ]
 
     def modify_config(self, port=None, sslport=None, auth=None, urlbase=None):
         '''
